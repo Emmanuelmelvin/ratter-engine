@@ -1,0 +1,5 @@
+{
+    local_certs
+    admin localhost:2019
+    # No site blocks here — all routes managed via Admin API
+}

@@ -1,0 +1,365 @@
+{
+    "localdns": {
+        "listen": [
+            ":80"
+        ],
+        "routes": [
+            {
+                "@id": "localdns-local-test",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "127.0.0.1:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ]
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            },
+            {
+                "@id": "route-bG9jYWwudGVzdA",
+                "handle": [
+                    {
+                        "handler": "reverse_proxy",
+                        "upstreams": [
+                            {
+                                "dial": "localhost:4321"
+                            }
+                        ]
+                    }
+                ],
+                "match": [
+                    {
+                        "host": [
+                            "local.test"
+                        ]
+                    }
+                ],
+                "terminal": true
+            }
+        ]
+    }
+}

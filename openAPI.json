@@ -1,0 +1,357 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "LocalDNS API",
+    "version": "1.0.0",
+    "description": "Backend API for LocalDNS"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4322"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": ["error", "code"]
+      },
+      "Domain": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "domain": {
+            "type": "string",
+            "example": "admin.localhost"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["subdomain", "custom", "wildcard"]
+          },
+          "target_ip": {
+            "type": "string",
+            "example": "127.0.0.1"
+          },
+          "port": {
+            "type": "integer",
+            "example": 3000
+          },
+          "active": {
+            "type": "boolean",
+            "example": true
+          },
+          "created_at": {
+            "type": "string",
+            "example": "2026-05-07 10:30:00"
+          }
+        },
+        "required": [
+          "id",
+          "domain",
+          "type",
+          "target_ip",
+          "active",
+          "created_at"
+        ]
+      },
+      "CreateDomainRequest": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string",
+            "example": "api.localhost"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["subdomain", "custom", "wildcard"]
+          },
+          "target_ip": {
+            "type": "string",
+            "example": "127.0.0.1"
+          },
+          "port": {
+            "type": "integer",
+            "example": 3000
+          }
+        },
+        "required": ["domain", "type"]
+      },
+      "UpdateDomainRequest": {
+        "type": "object",
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["subdomain", "custom", "wildcard"]
+          },
+          "target_ip": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/domains": {
+      "get": {
+        "tags": ["Domains"],
+        "summary": "List domains",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Domains"],
+        "summary": "Create domain",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDomainRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/api/domains/{id}": {
+      "patch": {
+        "tags": ["Domains"],
+        "summary": "Update domain",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDomainRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Domains"],
+        "summary": "Delete domain",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/api/domains/{id}/toggle": {
+      "patch": {
+        "tags": ["Domains"],
+        "summary": "Toggle domain",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Toggled"
+          }
+        }
+      }
+    },
+    "/api/dns/status": {
+      "get": {
+        "tags": ["DNS"],
+        "summary": "DNS status",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/dns/reload": {
+      "post": {
+        "tags": ["DNS"],
+        "summary": "Reload DNS",
+        "responses": {
+          "200": {
+            "description": "Reloaded"
+          }
+        }
+      }
+    },
+    "/api/dns/flush": {
+      "post": {
+        "tags": ["DNS"],
+        "summary": "Flush DNS",
+        "responses": {
+          "200": {
+            "description": "Flushed"
+          }
+        }
+      }
+    },
+    "/api/dns/resolver/set": {
+      "post": {
+        "tags": ["DNS"],
+        "summary": "Set resolver",
+        "responses": {
+          "200": {
+            "description": "Resolver set"
+          }
+        }
+      }
+    },
+    "/api/dns/resolver/restore": {
+      "post": {
+        "tags": ["DNS"],
+        "summary": "Restore resolver",
+        "responses": {
+          "200": {
+            "description": "Resolver restored"
+          }
+        }
+      }
+    },
+    "/api/certs/{domainId}": {
+      "post": {
+        "tags": ["Certificates"],
+        "summary": "Generate cert",
+        "parameters": [
+          {
+            "name": "domainId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Certificates"],
+        "summary": "Delete cert",
+        "parameters": [
+          {
+            "name": "domainId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/api/log": {
+      "get": {
+        "tags": ["Logs"],
+        "summary": "Get logs",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Logs"],
+        "summary": "Clear logs",
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "tags": ["Settings"],
+        "summary": "List settings",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Settings"],
+        "summary": "Update setting",
+        "responses": {
+          "200": {
+            "description": "Updated"
+          }
+        }
+      }
+    }
+  }
+}

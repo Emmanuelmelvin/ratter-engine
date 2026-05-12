@@ -1,0 +1,25 @@
+{
+  "name": "localdns-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.0.0",
+    "@hono/swagger-ui": "^0.5.3",
+    "@hono/zod-openapi": "^0.16.4",
+    "hono": "^4.0.0",
+    "dotenv": "^16.4.5",
+    "ws": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/ws": "^8.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
