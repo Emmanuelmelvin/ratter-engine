@@ -52,5 +52,5 @@ export async function bootstrap(): Promise<void> {
 
   console.log(`✓ Bootstrapped ${counters.dnsRecords} DNS records into Technitium`);
   console.log(`✓ Bootstrapped ${counters.routes} routes into Caddy`);
-  console.log('✓ local.test is ready at http://local.test');
+  console.log('✓ local.test is ready at https://local.test');
 }

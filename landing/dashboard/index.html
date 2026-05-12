@@ -793,6 +793,93 @@
       font-family: var(--mono);
     }
 
+    .domain-link {
+      color: var(--accent2);
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(14, 165, 233, 0.4);
+      cursor: pointer;
+      font-family: var(--mono);
+      font-weight: 600;
+    }
+
+    .domain-link:hover {
+      color: var(--accent);
+      border-bottom-color: rgba(0, 212, 170, 0.6);
+    }
+
+    .insight-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .insight-tile {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(14, 165, 233, 0.05);
+    }
+
+    .insight-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .insight-value {
+      font-family: var(--mono);
+      font-size: 16px;
+      color: var(--text);
+      margin-top: 6px;
+    }
+
+    .sketch-chart-wrap {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(0, 212, 170, 0.08), rgba(14, 165, 233, 0.04));
+      padding: 10px;
+    }
+
+    .sketch-chart {
+      width: 100%;
+      height: 220px;
+      display: block;
+    }
+
+    .sketch-axis {
+      stroke: rgba(200, 216, 236, 0.4);
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-dasharray: 3 6;
+    }
+
+    .sketch-line {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 6px rgba(0, 212, 170, 0.25));
+    }
+
+    .sketch-fill {
+      fill: rgba(0, 212, 170, 0.16);
+      stroke: none;
+    }
+
+    .sketch-caption {
+      margin-top: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     /* ── sections ── */
     .section {
       display: none;
@@ -1168,11 +1255,12 @@
             <div class="card-header">
               <div>
                 <div class="card-title">Technitium Logs</div>
-                <div class="card-subtitle">Browse daily Technitium server log files and inspect each entry</div>
+                <div class="card-subtitle">Browse daily server logs and query DNS logs with filters</div>
               </div>
-              <button class="btn btn-secondary btn-small" onclick="loadLogs()">Refresh Files</button>
+              <button class="btn btn-secondary btn-small" onclick="loadLogs()">Refresh Logs</button>
             </div>
-            <div class="log-browser-toolbar">
+
+            <div class="log-browser-toolbar" style="margin-bottom: 12px;">
               <div style="flex: 1; min-width: 260px;">
                 <label class="form-label">Available Log Files</label>
                 <select id="technitium-log-file" class="form-select" onchange="loadTechnitiumLogFile(this.value)">
@@ -1180,12 +1268,96 @@
                 </select>
               </div>
               <div class="log-browser-meta">
-                <div class="pill blue" id="technitium-log-count">0 entries</div>
-                <div class="pill" id="technitium-log-size">—</div>
+                <div class="pill blue" id="technitium-file-log-count">0 entries</div>
+                <div class="pill" id="technitium-log-size">-</div>
+              </div>
+            </div>
+            <div id="logs-file-viewer" class="technitium-log-viewer" style="min-height: 200px; margin-bottom: 20px;">
+              <div class="loading"></div>
+            </div>
+
+            <div style="height: 1px; background: var(--border); margin: 20px 0;"></div>
+
+            <div class="log-browser-toolbar">
+              <div style="min-width: 220px; flex: 1;">
+                <label class="form-label">Start (Today)</label>
+                <input id="log-filter-start" type="datetime-local" class="form-input" />
+              </div>
+              <div style="min-width: 220px; flex: 1;">
+                <label class="form-label">End (Today)</label>
+                <input id="log-filter-end" type="datetime-local" class="form-input" />
+              </div>
+              <div style="min-width: 220px; flex: 1;">
+                <label class="form-label">Query Name (QNAME)</label>
+                <input id="log-filter-qname" class="form-input" placeholder="example.com" />
+              </div>
+              <div style="min-width: 200px; flex: 1;">
+                <label class="form-label">Client IP</label>
+                <input id="log-filter-client-ip" class="form-input" placeholder="127.0.0.1" />
+              </div>
+              <div style="min-width: 160px;">
+                <label class="form-label">Protocol</label>
+                <select id="log-filter-protocol" class="form-select">
+                  <option value="">Any</option>
+                  <option value="Udp">UDP</option>
+                  <option value="Tcp">TCP</option>
+                  <option value="Tls">TLS</option>
+                  <option value="Https">HTTPS</option>
+                  <option value="Quic">QUIC</option>
+                </select>
+              </div>
+              <div style="min-width: 180px;">
+                <label class="form-label">Response Type</label>
+                <select id="log-filter-response-type" class="form-select">
+                  <option value="">Any</option>
+                  <option value="Authoritative">Authoritative</option>
+                  <option value="Recursive">Recursive</option>
+                  <option value="Cached">Cached</option>
+                  <option value="Blocked">Blocked</option>
+                  <option value="UpstreamBlocked">UpstreamBlocked</option>
+                  <option value="CacheBlocked">CacheBlocked</option>
+                </select>
+              </div>
+              <div style="min-width: 120px;">
+                <label class="form-label">Rows</label>
+                <select id="log-filter-limit" class="form-select" onchange="applyLogFilters()">
+                  <option value="50">50</option>
+                  <option value="100" selected>100</option>
+                  <option value="200">200</option>
+                  <option value="500">500</option>
+                </select>
+              </div>
+              <div style="display: flex; align-items: end; min-width: 120px;">
+                <button class="btn btn-secondary btn-small" onclick="applyLogFilters()">Apply Filters</button>
+              </div>
+              <div class="log-browser-meta">
+                <div class="pill blue" id="technitium-query-log-count">0 entries</div>
+                <div class="pill" id="technitium-log-page">Page 1 / 1</div>
               </div>
             </div>
             <div id="logs-list" class="technitium-log-viewer" style="min-height: 200px;">
               <div class="loading"></div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px;">
+              <button id="log-prev-btn" class="btn btn-secondary btn-small" onclick="changeLogPage(-1)">Previous</button>
+              <button id="log-next-btn" class="btn btn-secondary btn-small" onclick="changeLogPage(1)">Next</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Domain Details Section -->
+        <section id="domain-details" class="section">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title" id="domain-details-title">Domain Details</div>
+                <div class="card-subtitle" id="domain-details-subtitle">Traffic and health insights from Technitium query logs</div>
+              </div>
+              <button class="btn btn-secondary btn-small" onclick="showSection('domains')">Back To Domains</button>
+            </div>
+
+            <div id="domain-details-content" style="min-height: 240px; display: flex; align-items: center; justify-content: center;">
+              <div class="empty-state"><p>Select a domain to view details.</p></div>
             </div>
           </div>
         </section>
@@ -1285,10 +1457,13 @@
 
   <script>
     // Navigation
+    let selectedDomainId = null;
+
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', () => {
         const section = item.dataset.section;
         showSection(section);
+        window.location.hash = section;
       });
     });
 
@@ -1311,9 +1486,10 @@
         dns: 'DNS Configuration',
         certificates: 'Certificates Management',
         logs: 'Technitium Logs',
+        'domain-details': 'Domain Details',
         settings: 'System Settings'
       };
-      document.getElementById('page-title').textContent = titles[sectionId];
+      document.getElementById('page-title').textContent = titles[sectionId] || 'Overview';
 
       // Load data
       loadSectionData(sectionId);
@@ -1335,6 +1511,11 @@
           break;
         case 'logs':
           loadLogs();
+          break;
+        case 'domain-details':
+          if (selectedDomainId) {
+            loadDomainDetails(selectedDomainId);
+          }
           break;
         case 'settings':
           loadSettings();
@@ -1366,7 +1547,7 @@
         const domainRows = domains.slice(-5).reverse().map(d => `
           <tr>
             <td>
-              <div style="font-family: var(--mono); font-size: 12px;">${d.domain}</div>
+              <a class="domain-link" href="#domain-details:${d.id}" onclick="event.preventDefault(); openDomainDetails(${d.id});">${d.domain}</a>
             </td>
             <td>
               <span class="pill">${d.type}</span>
@@ -1454,7 +1635,7 @@
 
         const rows = domains.map(d => `
           <tr>
-            <td><div style="font-family: var(--mono); font-weight: 600;">${d.domain}</div></td>
+            <td><a class="domain-link" href="#domain-details:${d.id}" onclick="event.preventDefault(); openDomainDetails(${d.id});">${d.domain}</a></td>
             <td><span class="pill">${d.type}</span></td>
             <td><div style="font-family: var(--mono); font-size: 12px;">${d.target_ip}${d.port ? ':' + d.port : ''}</div></td>
             <td>${new Date(d.created_at).toLocaleDateString()}</td>
@@ -1815,7 +1996,177 @@
     // ─────────────────────────────────────
     let technitiumLogFiles = [];
 
+    const logQueryState = {
+      pageNumber: 1,
+      totalPages: 1,
+      totalEntries: 0,
+      limit: 100,
+      start: '',
+      end: '',
+      qname: '',
+      clientIpAddress: '',
+      protocol: '',
+      responseType: '',
+    };
+
+    function toDateTimeLocalString(value) {
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, '0');
+      const day = String(value.getDate()).padStart(2, '0');
+      const hours = String(value.getHours()).padStart(2, '0');
+      const minutes = String(value.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    function initializeTodayLogRange() {
+      const startInput = document.getElementById('log-filter-start');
+      const endInput = document.getElementById('log-filter-end');
+
+      if (startInput.value && endInput.value) {
+        return;
+      }
+
+      const now = new Date();
+      const dayStart = new Date(now);
+      dayStart.setHours(0, 0, 0, 0);
+
+      startInput.value = toDateTimeLocalString(dayStart);
+      endInput.value = toDateTimeLocalString(now);
+    }
+
+    function loadLogFilterStateFromInputs() {
+      logQueryState.limit = Number.parseInt(document.getElementById('log-filter-limit').value, 10) || 100;
+      logQueryState.qname = document.getElementById('log-filter-qname').value.trim();
+      logQueryState.clientIpAddress = document.getElementById('log-filter-client-ip').value.trim();
+      logQueryState.protocol = document.getElementById('log-filter-protocol').value;
+      logQueryState.responseType = document.getElementById('log-filter-response-type').value;
+
+      const startValue = document.getElementById('log-filter-start').value;
+      const endValue = document.getElementById('log-filter-end').value;
+
+      logQueryState.start = startValue ? new Date(startValue).toISOString() : '';
+      logQueryState.end = endValue ? new Date(endValue).toISOString() : '';
+    }
+
+    function applyLogFilters() {
+      logQueryState.pageNumber = 1;
+      loadLogFilterStateFromInputs();
+      loadQueryLogs();
+    }
+
+    function changeLogPage(delta) {
+      const nextPage = logQueryState.pageNumber + delta;
+      if (nextPage < 1 || nextPage > logQueryState.totalPages) {
+        return;
+      }
+
+      logQueryState.pageNumber = nextPage;
+      loadQueryLogs();
+    }
+
     async function loadLogs() {
+      initializeTodayLogRange();
+      loadLogFilterStateFromInputs();
+      await Promise.all([loadTechnitiumLogFiles(), loadQueryLogs()]);
+    }
+
+    async function loadQueryLogs() {
+      const viewer = document.getElementById('logs-list');
+      const countEl = document.getElementById('technitium-query-log-count');
+      const pageEl = document.getElementById('technitium-log-page');
+      const prevBtn = document.getElementById('log-prev-btn');
+      const nextBtn = document.getElementById('log-next-btn');
+
+      viewer.innerHTML = '<div class="loading"></div>';
+      countEl.textContent = 'Loading...';
+      pageEl.textContent = `Page ${logQueryState.pageNumber} / ${logQueryState.totalPages}`;
+
+      try {
+        const params = new URLSearchParams({
+          limit: String(logQueryState.limit),
+          pageNumber: String(logQueryState.pageNumber),
+          descendingOrder: 'true',
+        });
+
+        if (logQueryState.qname) {
+          params.set('qname', logQueryState.qname);
+        }
+        if (logQueryState.clientIpAddress) {
+          params.set('clientIpAddress', logQueryState.clientIpAddress);
+        }
+        if (logQueryState.protocol) {
+          params.set('protocol', logQueryState.protocol);
+        }
+        if (logQueryState.responseType) {
+          params.set('responseType', logQueryState.responseType);
+        }
+        if (logQueryState.start) {
+          params.set('start', logQueryState.start);
+        }
+        if (logQueryState.end) {
+          params.set('end', logQueryState.end);
+        }
+
+        const response = await safeFetch(`/api/log?${params.toString()}`);
+        const entries = normalizeListResponse(response);
+
+        logQueryState.pageNumber = response?.pageNumber || logQueryState.pageNumber;
+        logQueryState.totalPages = response?.totalPages || 1;
+        logQueryState.totalEntries = response?.totalEntries || entries.length;
+
+        countEl.textContent = `${logQueryState.totalEntries} entries`;
+        pageEl.textContent = `Page ${logQueryState.pageNumber} / ${logQueryState.totalPages}`;
+
+        prevBtn.disabled = logQueryState.pageNumber <= 1;
+        nextBtn.disabled = logQueryState.pageNumber >= logQueryState.totalPages;
+
+        if (!entries.length) {
+          viewer.innerHTML = '<div class="technitium-log-empty">No query logs match the current filters.</div>';
+          return;
+        }
+
+        const rows = entries.map((entry) => {
+          const time = entry.queried_at ? new Date(entry.queried_at).toLocaleString() : '-';
+          return `
+            <tr>
+              <td style="font-family: var(--mono); font-size: 11px;">${escapeHtml(time)}</td>
+              <td>${escapeHtml(entry.domain_queried || '-')}</td>
+              <td style="font-family: var(--mono); font-size: 11px;">${escapeHtml(entry.client_ip || '-')}</td>
+              <td><span class="pill">${escapeHtml(entry.source || '-')}</span></td>
+              <td style="font-family: var(--mono); font-size: 11px;">${escapeHtml(entry.protocol || '-')}</td>
+              <td style="font-family: var(--mono); font-size: 11px;">${escapeHtml(entry.rcode || '-')}</td>
+              <td style="font-family: var(--mono); font-size: 11px;">${entry.response_ms == null ? '-' : `${entry.response_ms}ms`}</td>
+            </tr>
+          `;
+        }).join('');
+
+        viewer.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>QNAME</th>
+                <th>Client IP</th>
+                <th>Source</th>
+                <th>Protocol</th>
+                <th>RCode</th>
+                <th>RTT</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      } catch (err) {
+        console.error('Error loading query logs:', err);
+        countEl.textContent = '0 entries';
+        pageEl.textContent = 'Page 1 / 1';
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        viewer.innerHTML = '<div class="technitium-log-empty">Error loading query logs.</div>';
+      }
+    }
+
+    async function loadTechnitiumLogFiles() {
       try {
         const filesRes = await safeFetch('/api/log/technitium/files');
         const files = normalizeListResponse(filesRes)
@@ -1825,22 +2176,24 @@
         technitiumLogFiles = files;
 
         const select = document.getElementById('technitium-log-file');
-        const viewer = document.getElementById('logs-list');
+        const viewer = document.getElementById('logs-file-viewer');
+        const countEl = document.getElementById('technitium-file-log-count');
+        const sizeEl = document.getElementById('technitium-log-size');
 
         if (!files.length) {
           select.innerHTML = '<option value="">No log files found</option>';
-          document.getElementById('technitium-log-count').textContent = '0 entries';
-          document.getElementById('technitium-log-size').textContent = '—';
+          countEl.textContent = '0 entries';
+          sizeEl.textContent = '-';
           viewer.innerHTML = '<div class="technitium-log-empty">No Technitium log files are available.</div>';
           return;
         }
 
         const currentValue = select.value;
-        select.innerHTML = files.map(file => `
+        select.innerHTML = files.map((file) => `
           <option value="${escapeHtml(file.fileName)}">${escapeHtml(file.fileName)}${file.size ? ` (${escapeHtml(file.size)})` : ''}</option>
         `).join('');
 
-        const preferredValue = files.some(file => file.fileName === currentValue)
+        const preferredValue = files.some((file) => file.fileName === currentValue)
           ? currentValue
           : files[0].fileName;
 
@@ -1848,7 +2201,7 @@
         await loadTechnitiumLogFile(preferredValue);
       } catch (err) {
         console.error('Error loading Technitium log files:', err);
-        document.getElementById('logs-list').innerHTML = '<div class="technitium-log-empty">Error loading Technitium log files.</div>';
+        document.getElementById('logs-file-viewer').innerHTML = '<div class="technitium-log-empty">Error loading Technitium log files.</div>';
       }
     }
 
@@ -1857,13 +2210,13 @@
         return;
       }
 
-      const viewer = document.getElementById('logs-list');
-      const countEl = document.getElementById('technitium-log-count');
+      const viewer = document.getElementById('logs-file-viewer');
+      const countEl = document.getElementById('technitium-file-log-count');
       const sizeEl = document.getElementById('technitium-log-size');
-      const file = technitiumLogFiles.find(item => item.fileName === fileName);
+      const file = technitiumLogFiles.find((item) => item.fileName === fileName);
 
       countEl.textContent = 'Loading...';
-      sizeEl.textContent = file?.size || '—';
+      sizeEl.textContent = file?.size || '-';
       viewer.innerHTML = '<div class="loading"></div>';
 
       try {
@@ -1883,7 +2236,7 @@
           return;
         }
 
-        viewer.innerHTML = entries.map(entry => renderTechnitiumLogEntry(entry)).join('');
+        viewer.innerHTML = entries.map((entry) => renderTechnitiumLogEntry(entry)).join('');
       } catch (err) {
         console.error('Error loading Technitium log file:', err);
         countEl.textContent = '0 entries';
@@ -1894,7 +2247,7 @@
     function parseTechnitiumLogLines(rawLog) {
       return rawLog
         .split(/\r?\n/)
-        .map(line => line.trimEnd())
+        .map((line) => line.trimEnd())
         .filter(Boolean)
         .map(parseTechnitiumLogLine)
         .filter(Boolean);
@@ -1971,7 +2324,7 @@
 
     function renderTechnitiumLogEntry(entry) {
       const tags = entry.tags.length
-        ? entry.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')
+        ? entry.tags.map((tag) => `<span class="pill">${escapeHtml(tag)}</span>`).join('')
         : '<span class="pill blue">No tags</span>';
 
       const details = entry.details
@@ -2000,6 +2353,168 @@
             <pre class="technitium-log-pre">${escapeHtml(entry.raw)}</pre>
           </details>
         </article>
+      `;
+    }
+
+    // ─────────────────────────────────────
+    // Domain Details
+    // ─────────────────────────────────────
+    function openDomainDetails(domainId) {
+      selectedDomainId = Number(domainId);
+      window.location.hash = `domain-details:${selectedDomainId}`;
+      showSection('domain-details');
+      loadDomainDetails(selectedDomainId);
+    }
+
+    async function loadDomainDetails(domainId) {
+      const target = document.getElementById('domain-details-content');
+      const title = document.getElementById('domain-details-title');
+      const subtitle = document.getElementById('domain-details-subtitle');
+
+      target.innerHTML = '<div class="loading"></div>';
+
+      try {
+        const data = await safeFetch(`/api/domains/${domainId}/insights?windowHours=24&bucketMinutes=30&limit=500`);
+
+        if (!data || !data.domain) {
+          target.innerHTML = '<div class="empty-state"><p>Could not load domain insights.</p></div>';
+          return;
+        }
+
+        const domain = data.domain;
+        const summary = data.summary || {};
+        const traffic = data.traffic || { points: [] };
+        const recentEntries = Array.isArray(data.recentEntries) ? data.recentEntries : [];
+
+        title.textContent = `Domain Details · ${domain.domain}`;
+        subtitle.textContent = `Traffic snapshot for the last 24 hours`;
+
+        const topQtypes = (summary.topQtypes || [])
+          .map((item) => `${escapeHtml(item.qtype)} (${item.count})`)
+          .join(', ') || 'None';
+
+        const topRcodes = (summary.topRcodes || [])
+          .map((item) => `${escapeHtml(item.rcode)} (${item.count})`)
+          .join(', ') || 'None';
+
+        const recentRows = recentEntries.slice(0, 10).map((entry) => `
+          <tr>
+            <td style="font-family: var(--mono); font-size: 11px;">${escapeHtml(new Date(entry.queried_at).toLocaleString())}</td>
+            <td style="font-family: var(--mono); font-size: 11px;">${escapeHtml(entry.client_ip || '-')}</td>
+            <td><span class="pill">${escapeHtml(entry.qtype || '-')}</span></td>
+            <td><span class="pill blue">${escapeHtml(entry.rcode || '-')}</span></td>
+            <td style="font-family: var(--mono); font-size: 11px;">${entry.response_ms == null ? '-' : `${entry.response_ms}ms`}</td>
+          </tr>
+        `).join('');
+
+        target.innerHTML = `
+          <div class="insight-grid">
+            <div class="insight-tile">
+              <div class="insight-label">Domain</div>
+              <div class="insight-value">${escapeHtml(domain.domain)}</div>
+            </div>
+            <div class="insight-tile">
+              <div class="insight-label">Total Queries (24h)</div>
+              <div class="insight-value">${summary.totalQueries ?? 0}</div>
+            </div>
+            <div class="insight-tile">
+              <div class="insight-label">Unique Clients</div>
+              <div class="insight-value">${summary.uniqueClients ?? 0}</div>
+            </div>
+            <div class="insight-tile">
+              <div class="insight-label">Success Rate</div>
+              <div class="insight-value">${summary.successRate ?? 0}%</div>
+            </div>
+            <div class="insight-tile">
+              <div class="insight-label">Average RTT</div>
+              <div class="insight-value">${summary.averageResponseMs == null ? '-' : `${summary.averageResponseMs}ms`}</div>
+            </div>
+            <div class="insight-tile">
+              <div class="insight-label">Target</div>
+              <div class="insight-value">${escapeHtml(domain.target_ip)}${domain.port ? `:${domain.port}` : ''}</div>
+            </div>
+          </div>
+
+          <div class="sketch-chart-wrap">
+            <svg id="domain-traffic-sketch" class="sketch-chart" viewBox="0 0 900 220" preserveAspectRatio="none"></svg>
+            <div class="sketch-caption">
+              <span>Hand-drawn traffic sketch from Technitium query logs</span>
+              <span>${escapeHtml(new Date(summary.windowStart || Date.now()).toLocaleString())} to ${escapeHtml(new Date(summary.windowEnd || Date.now()).toLocaleString())}</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <div class="pill">Top QTypes: ${topQtypes}</div>
+            <div class="pill blue">Top RCodes: ${topRcodes}</div>
+          </div>
+
+          <div style="margin-top: 16px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Client</th>
+                  <th>QType</th>
+                  <th>RCode</th>
+                  <th>RTT</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${recentRows || '<tr><td colspan="5" style="text-align:center; color: var(--muted);">No recent entries for this domain</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        renderSketchTrafficChart(traffic.points || []);
+      } catch (err) {
+        console.error('Error loading domain details:', err);
+        target.innerHTML = '<div class="empty-state"><p>Error loading domain details.</p></div>';
+      }
+    }
+
+    function renderSketchTrafficChart(points) {
+      const svg = document.getElementById('domain-traffic-sketch');
+      if (!svg) {
+        return;
+      }
+
+      const width = 900;
+      const height = 220;
+      const padding = { top: 10, right: 10, bottom: 28, left: 28 };
+      const chartWidth = width - padding.left - padding.right;
+      const chartHeight = height - padding.top - padding.bottom;
+      const list = Array.isArray(points) ? points : [];
+
+      if (!list.length) {
+        svg.innerHTML = '';
+        return;
+      }
+
+      const maxCount = Math.max(1, ...list.map((point) => Number(point.count) || 0));
+      const xStep = list.length > 1 ? chartWidth / (list.length - 1) : chartWidth;
+
+      const coords = list.map((point, index) => {
+        const baseX = padding.left + index * xStep;
+        const baseY = padding.top + chartHeight - ((Number(point.count) || 0) / maxCount) * chartHeight;
+        const wobble = Math.sin(index * 1.7) * 2.3;
+        return {
+          x: baseX,
+          y: baseY + wobble,
+        };
+      });
+
+      const linePath = coords
+        .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+        .join(' ');
+
+      const areaPath = `${linePath} L ${padding.left + chartWidth} ${padding.top + chartHeight} L ${padding.left} ${padding.top + chartHeight} Z`;
+
+      svg.innerHTML = `
+        <line class="sketch-axis" x1="${padding.left}" y1="${padding.top + chartHeight}" x2="${padding.left + chartWidth}" y2="${padding.top + chartHeight}" />
+        <line class="sketch-axis" x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + chartHeight}" />
+        <path class="sketch-fill" d="${areaPath}"></path>
+        <path class="sketch-line" d="${linePath}"></path>
       `;
     }
 
@@ -2165,7 +2680,18 @@
     // Initialize with hash-based routing
     function initializeFromHash() {
       const hash = window.location.hash.slice(1); // Remove the # character
-      const validSections = ['overview', 'domains', 'dns', 'certificates', 'logs', 'settings'];
+
+      if (hash.startsWith('domain-details:')) {
+        const parsed = Number.parseInt(hash.split(':')[1], 10);
+        if (!Number.isNaN(parsed)) {
+          selectedDomainId = parsed;
+          showSection('domain-details');
+          loadDomainDetails(parsed);
+          return;
+        }
+      }
+
+      const validSections = ['overview', 'domains', 'dns', 'certificates', 'logs', 'domain-details', 'settings'];
       const section = validSections.includes(hash) ? hash : 'overview';
       showSection(section);
     }

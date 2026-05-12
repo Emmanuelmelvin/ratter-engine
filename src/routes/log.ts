@@ -128,24 +128,63 @@ const downloadTechnitiumLogRoute = createRoute({
 // GET /api/log
 router.openapi(getLogRoute, async (c) => {
   try {
-    const limitParam = c.req.query('limit');
-
-    let limit = 200;
-
-    if (limitParam) {
-      const parsed = Number.parseInt(limitParam, 10);
-
-      if (!Number.isNaN(parsed) && parsed > 0) {
-        limit = Math.min(parsed, 500);
+    const parsePositiveInt = (value: string | undefined, fallback: number, max?: number): number => {
+      if (!value) {
+        return fallback;
       }
-    }
 
-    const page = await queryLogs(limit);
+      const parsed = Number.parseInt(value, 10);
+      if (Number.isNaN(parsed) || parsed <= 0) {
+        return fallback;
+      }
+
+      if (typeof max === 'number') {
+        return Math.min(parsed, max);
+      }
+
+      return parsed;
+    };
+
+    const parseBoolean = (value: string | undefined, fallback: boolean): boolean => {
+      if (!value) {
+        return fallback;
+      }
+
+      const normalized = value.toLowerCase();
+      if (normalized === 'true' || normalized === '1') {
+        return true;
+      }
+
+      if (normalized === 'false' || normalized === '0') {
+        return false;
+      }
+
+      return fallback;
+    };
+
+    const page = await queryLogs({
+      limit: parsePositiveInt(c.req.query('limit'), 200, 500),
+      pageNumber: parsePositiveInt(c.req.query('pageNumber'), 1),
+      descendingOrder: parseBoolean(c.req.query('descendingOrder'), true),
+      start: c.req.query('start')?.trim() || undefined,
+      end: c.req.query('end')?.trim() || undefined,
+      clientIpAddress: c.req.query('clientIpAddress')?.trim() || undefined,
+      protocol: c.req.query('protocol')?.trim() || undefined,
+      responseType: c.req.query('responseType')?.trim() || undefined,
+      rcode: c.req.query('rcode')?.trim() || undefined,
+      qname: c.req.query('qname')?.trim() || undefined,
+      qtype: c.req.query('qtype')?.trim() || undefined,
+      qclass: c.req.query('qclass')?.trim() || undefined,
+    });
+
     const entries = page.entries.map((entry) => mapTechnitiumLogEntry(entry));
 
     return c.json(
       {
         entries,
+        pageNumber: page.pageNumber,
+        totalPages: page.totalPages,
+        totalEntries: page.totalEntries,
         total: page.totalEntries,
       },
       200
@@ -197,9 +236,14 @@ router.openapi(downloadTechnitiumLogRoute, async (c) => {
 function mapTechnitiumLogEntry(entry: {
   rowNumber: number;
   timestamp: string;
+  clientIpAddress: string;
+  protocol: string;
   responseType: string;
+  rcode: string;
   responseRtt: number;
   qname: string;
+  qtype: string;
+  qclass: string;
   answer: string;
 }): LogEntry {
   return {
@@ -210,6 +254,11 @@ function mapTechnitiumLogEntry(entry: {
     response_ms: Number.isFinite(entry.responseRtt) ? Math.round(entry.responseRtt) : null,
     matched_rule_id: null,
     queried_at: entry.timestamp,
+    client_ip: entry.clientIpAddress || null,
+    protocol: entry.protocol || null,
+    rcode: entry.rcode || null,
+    qtype: entry.qtype || null,
+    qclass: entry.qclass || null,
   };
 }
 

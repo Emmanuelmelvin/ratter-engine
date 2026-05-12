@@ -61,6 +61,32 @@ const dnsFlushRoute = createRoute({
   },
 });
 
+const dnsReloadRoute = createRoute({
+  method: 'post',
+  path: '/reload',
+  tags: ['DNS'],
+  summary: 'Reload DNS',
+  description: 'Backward-compatible endpoint that triggers DNS cache reload/flush on Technitium.',
+  responses: {
+    200: {
+      description: 'DNS reloaded',
+      content: {
+        'application/json': {
+          schema: DNSActionResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal error',
+      content: {
+        'application/json': {
+          schema: ApiErrorSchema,
+        },
+      },
+    },
+  },
+});
+
 // GET /api/dns/status
 router.openapi(dnsStatusRoute, async (c) => {
   try {
@@ -79,6 +105,19 @@ router.openapi(dnsFlushRoute, async (c) => {
   try {
     await technitium.flushCache();
     return c.json({ success: true, output: 'Cache flushed' }, 200);
+  } catch (err) {
+    if (err instanceof Error) {
+      return c.json({ error: err.message, code: 'INTERNAL' } as ApiError, 500);
+    }
+    return c.json({ error: 'Unknown error', code: 'UNKNOWN' } as ApiError, 500);
+  }
+});
+
+// POST /api/dns/reload
+router.openapi(dnsReloadRoute, async (c) => {
+  try {
+    await technitium.flushCache();
+    return c.json({ success: true, output: 'DNS reloaded' }, 200);
   } catch (err) {
     if (err instanceof Error) {
       return c.json({ error: err.message, code: 'INTERNAL' } as ApiError, 500);

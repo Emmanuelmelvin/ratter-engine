@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import { db } from '../db/client';
-import type { Domain, ApiError } from '../types';
+import type { Domain, ApiError, LogEntry } from '../types';
 import * as technitium from '../services/technitium';
 import * as caddy from '../services/caddy';
 import { deleteCert } from '../services/cert-manager';
@@ -9,6 +9,8 @@ import { internalError } from '../utils/error';
 import {
   ApiErrorSchema,
   CreateDomainRequestSchema,
+  DomainInsightsQuerySchema,
+  DomainInsightsResponseSchema,
   DomainIdParamSchema,
   DomainResponseSchema,
   DomainsResponseSchema,
@@ -219,6 +221,90 @@ const toggleDomainRoute = createRoute({
     },
   },
 });
+
+const domainInsightsRoute = createRoute({
+  method: 'get',
+  path: '/{id}/insights',
+  tags: ['Domains'],
+  summary: 'Get domain insights',
+  description: 'Returns domain details and query traffic buckets derived from Technitium query logs.',
+  request: {
+    params: DomainIdParamSchema,
+    query: DomainInsightsQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Domain insights returned',
+      content: {
+        'application/json': {
+          schema: DomainInsightsResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Domain not found',
+      content: {
+        'application/json': {
+          schema: ApiErrorSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error',
+      content: {
+        'application/json': {
+          schema: ApiErrorSchema,
+        },
+      },
+    },
+  },
+});
+
+function parsePositiveInt(value: string | undefined, fallback: number, max?: number): number {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  if (typeof max === 'number') {
+    return Math.min(parsed, max);
+  }
+
+  return parsed;
+}
+
+function mapTechnitiumLogEntry(entry: {
+  rowNumber: number;
+  timestamp: string;
+  clientIpAddress: string;
+  protocol: string;
+  responseType: string;
+  rcode: string;
+  responseRtt: number;
+  qname: string;
+  qtype: string;
+  qclass: string;
+  answer: string;
+}): LogEntry {
+  return {
+    id: entry.rowNumber,
+    domain_queried: entry.qname,
+    resolved_to: entry.answer || null,
+    source: entry.responseType === 'Authoritative' ? 'local' : 'upstream',
+    response_ms: Number.isFinite(entry.responseRtt) ? Math.round(entry.responseRtt) : null,
+    matched_rule_id: null,
+    queried_at: entry.timestamp,
+    client_ip: entry.clientIpAddress || null,
+    protocol: entry.protocol || null,
+    rcode: entry.rcode || null,
+    qtype: entry.qtype || null,
+    qclass: entry.qclass || null,
+  };
+}
 
 // GET /api/domains
 router.openapi(listDomainsRoute, async (c) => {
@@ -545,6 +631,130 @@ router.openapi(toggleDomainRoute, async (c) => {
     }
 
     return c.json({ domain: updated }, 200);
+  } catch (err) {
+    return c.json(internalError(err), 500);
+  }
+});
+
+// GET /api/domains/:id/insights
+router.openapi(domainInsightsRoute, async (c) => {
+  try {
+    const id = Number(c.req.param('id'));
+    const domain = db
+      .prepare('SELECT * FROM domains WHERE id = ?')
+      .get(id) as unknown as Domain | undefined;
+
+    if (!domain) {
+      return c.json(
+        {
+          error: 'Domain not found',
+          code: 'NOT_FOUND',
+        } satisfies ApiError,
+        404
+      );
+    }
+
+    const windowHours = parsePositiveInt(c.req.query('windowHours'), 24, 168);
+    const bucketMinutes = parsePositiveInt(c.req.query('bucketMinutes'), 30, 120);
+    const limit = parsePositiveInt(c.req.query('limit'), 500, 500);
+
+    const windowEnd = new Date();
+    const windowStart = new Date(windowEnd.getTime() - windowHours * 60 * 60 * 1000);
+
+    const page = await technitium.queryLogs({
+      qname: domain.domain,
+      start: windowStart.toISOString(),
+      end: windowEnd.toISOString(),
+      limit,
+      pageNumber: 1,
+      descendingOrder: true,
+    });
+
+    const entries = page.entries;
+    const bucketSizeMs = bucketMinutes * 60 * 1000;
+    const bucketCount = Math.max(1, Math.ceil((windowEnd.getTime() - windowStart.getTime()) / bucketSizeMs));
+    const buckets = Array.from({ length: bucketCount }, (_, index) => {
+      const startMs = windowStart.getTime() + index * bucketSizeMs;
+      const endMs = Math.min(startMs + bucketSizeMs, windowEnd.getTime());
+      return {
+        bucketStart: new Date(startMs).toISOString(),
+        bucketEnd: new Date(endMs).toISOString(),
+        count: 0,
+      };
+    });
+
+    const clients = new Set<string>();
+    let noErrorCount = 0;
+    let rttSum = 0;
+    let rttCount = 0;
+    const qtypeCounts = new Map<string, number>();
+    const rcodeCounts = new Map<string, number>();
+
+    for (const entry of entries) {
+      if (entry.clientIpAddress) {
+        clients.add(entry.clientIpAddress);
+      }
+
+      if ((entry.rcode || '').toLowerCase() === 'noerror') {
+        noErrorCount += 1;
+      }
+
+      if (Number.isFinite(entry.responseRtt)) {
+        rttSum += entry.responseRtt;
+        rttCount += 1;
+      }
+
+      if (entry.qtype) {
+        qtypeCounts.set(entry.qtype, (qtypeCounts.get(entry.qtype) ?? 0) + 1);
+      }
+
+      if (entry.rcode) {
+        rcodeCounts.set(entry.rcode, (rcodeCounts.get(entry.rcode) ?? 0) + 1);
+      }
+
+      const timestampMs = Date.parse(entry.timestamp);
+      if (Number.isNaN(timestampMs) || timestampMs < windowStart.getTime() || timestampMs > windowEnd.getTime()) {
+        continue;
+      }
+
+      const bucketIndex = Math.floor((timestampMs - windowStart.getTime()) / bucketSizeMs);
+      if (bucketIndex >= 0 && bucketIndex < buckets.length) {
+        buckets[bucketIndex].count += 1;
+      }
+    }
+
+    const topQtypes = Array.from(qtypeCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([qtype, count]) => ({ qtype, count }));
+
+    const topRcodes = Array.from(rcodeCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([rcode, count]) => ({ rcode, count }));
+
+    return c.json(
+      {
+        domain,
+        summary: {
+          windowStart: windowStart.toISOString(),
+          windowEnd: windowEnd.toISOString(),
+          totalQueries: entries.length,
+          uniqueClients: clients.size,
+          noErrorCount,
+          successRate: entries.length ? Number(((noErrorCount / entries.length) * 100).toFixed(2)) : 0,
+          averageResponseMs: rttCount ? Number((rttSum / rttCount).toFixed(2)) : null,
+          topQtypes,
+          topRcodes,
+        },
+        traffic: {
+          bucketMinutes,
+          points: buckets,
+        },
+        recentEntries: entries.slice(0, 20).map((entry) => mapTechnitiumLogEntry(entry)),
+      },
+      200
+    );
   } catch (err) {
     return c.json(internalError(err), 500);
   }

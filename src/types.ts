@@ -16,6 +16,11 @@ export interface LogEntry {
   response_ms: number | null;
   matched_rule_id: number | null;
   queried_at: string;
+  client_ip?: string | null;
+  protocol?: string | null;
+  rcode?: string | null;
+  qtype?: string | null;
+  qclass?: string | null;
 }
 
 export interface ExecuteResult {

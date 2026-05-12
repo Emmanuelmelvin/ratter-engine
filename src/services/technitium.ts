@@ -604,6 +604,21 @@ type TechnitiumLogFile = {
   size: string;
 };
 
+export type QueryLogsOptions = {
+  limit?: number;
+  pageNumber?: number;
+  descendingOrder?: boolean;
+  start?: string;
+  end?: string;
+  clientIpAddress?: string;
+  protocol?: string;
+  responseType?: string;
+  rcode?: string;
+  qname?: string;
+  qtype?: string;
+  qclass?: string;
+};
+
 function parseLogFiles(body: TechnitiumApiErrorBody | undefined): TechnitiumLogFile[] {
   const response = body?.response ?? body;
   const files = (response?.logFiles ?? body?.logFiles ?? []) as TechnitiumLogFile[];
@@ -616,11 +631,11 @@ function parseLogFiles(body: TechnitiumApiErrorBody | undefined): TechnitiumLogF
  * Returns an empty result immediately (without logging) if query logging
  * is not configured.
  *
- * @param limit - Maximum number of entries to return (most recent first)
+ * @param optionsOrLimit - Maximum entries or advanced query options
  * @returns Page of query log entries, or an empty page if query logging is not configured
  * @throws TechnitiumApiError on API failures
  */
-export async function queryLogs(limit: number): Promise<TechnitiumQueryLogPage> {
+export async function queryLogs(optionsOrLimit: number | QueryLogsOptions = 200): Promise<TechnitiumQueryLogPage> {
   if (!queryLogEnabled) {
     return {
       pageNumber: 1,
@@ -630,18 +645,53 @@ export async function queryLogs(limit: number): Promise<TechnitiumQueryLogPage> 
     };
   }
 
-  logger.debug(COMPONENT, 'Fetching query logs', { limit });
+  const options = typeof optionsOrLimit === 'number'
+    ? { limit: optionsOrLimit }
+    : optionsOrLimit;
+
+  const limit = Math.min(Math.max(options.limit ?? 200, 1), 500);
+  const pageNumber = Math.max(options.pageNumber ?? 1, 1);
+  const payload: Record<string, string | number | boolean> = {
+    name: technitiumLogsAppName as string,
+    classPath: technitiumLogsClassPath as string,
+    pageNumber,
+    entriesPerPage: limit,
+    descendingOrder: options.descendingOrder ?? true,
+  };
+
+  if (technitiumNode) {
+    payload.node = technitiumNode;
+  }
+
+  const optionalFilters: Array<keyof QueryLogsOptions> = [
+    'start',
+    'end',
+    'clientIpAddress',
+    'protocol',
+    'responseType',
+    'rcode',
+    'qname',
+    'qtype',
+    'qclass',
+  ];
+
+  for (const key of optionalFilters) {
+    const value = options[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      payload[key] = value.trim();
+    }
+  }
+
+  logger.debug(COMPONENT, 'Fetching query logs', {
+    limit,
+    pageNumber,
+    filters: Object.keys(payload).filter((key) => !['name', 'classPath', 'pageNumber', 'entriesPerPage', 'descendingOrder', 'node'].includes(key)),
+  });
 
   try {
     const body = await request<TechnitiumApiErrorBody>('/api/logs/query', {
       method: 'GET',
-      body: JSON.stringify({
-        name: technitiumLogsAppName,
-        classPath: technitiumLogsClassPath,
-        pageNumber: 1,
-        entriesPerPage: limit,
-        descendingOrder: true,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const page = parseQueryLogPage(body);
@@ -668,7 +718,7 @@ export async function queryLogs(limit: number): Promise<TechnitiumQueryLogPage> 
  * @throws TechnitiumApiError on API failures
  */
 export async function getQueryLog(limit: number): Promise<TechnitiumQueryLogEntry[]> {
-  const page = await queryLogs(limit);
+  const page = await queryLogs({ limit });
   return page.entries;
 }
 

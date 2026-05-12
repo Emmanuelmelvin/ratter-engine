@@ -49,6 +49,80 @@ export const DomainIdParamSchema = z
   })
   .openapi('DomainIdParam');
 
+export const DomainInsightsQuerySchema = z
+  .object({
+    windowHours: z.string().optional().openapi({
+      param: { name: 'windowHours', in: 'query' },
+      example: '24',
+    }),
+    bucketMinutes: z.string().optional().openapi({
+      param: { name: 'bucketMinutes', in: 'query' },
+      example: '30',
+    }),
+    limit: z.string().optional().openapi({
+      param: { name: 'limit', in: 'query' },
+      example: '500',
+    }),
+  })
+  .openapi('DomainInsightsQuery');
+
+export const DomainInsightBucketSchema = z
+  .object({
+    bucketStart: z.string().openapi({ example: '2026-05-12T10:00:00.000Z' }),
+    bucketEnd: z.string().openapi({ example: '2026-05-12T10:30:00.000Z' }),
+    count: z.number().int().openapi({ example: 14 }),
+  })
+  .openapi('DomainInsightBucket');
+
+export const LogEntrySchema = z
+  .object({
+    id: z.number().int().openapi({ example: 25 }),
+    domain_queried: z.string().openapi({ example: 'admin.localhost' }),
+    resolved_to: z.string().nullable().openapi({ example: '127.0.0.1' }),
+    source: z.enum(['local', 'upstream']).openapi({ example: 'local' }),
+    response_ms: z.number().int().nullable().openapi({ example: 3 }),
+    matched_rule_id: z.number().int().nullable().openapi({ example: 1 }),
+    queried_at: z.string().openapi({ example: '2026-05-07 10:33:10' }),
+    client_ip: z.string().nullable().optional().openapi({ example: '127.0.0.1' }),
+    protocol: z.string().nullable().optional().openapi({ example: 'Udp' }),
+    rcode: z.string().nullable().optional().openapi({ example: 'NoError' }),
+    qtype: z.string().nullable().optional().openapi({ example: 'A' }),
+    qclass: z.string().nullable().optional().openapi({ example: 'IN' }),
+  })
+  .openapi('LogEntry');
+
+export const DomainInsightsResponseSchema = z
+  .object({
+    domain: DomainSchema,
+    summary: z.object({
+      windowStart: z.string().openapi({ example: '2026-05-11T12:00:00.000Z' }),
+      windowEnd: z.string().openapi({ example: '2026-05-12T12:00:00.000Z' }),
+      totalQueries: z.number().int().openapi({ example: 240 }),
+      uniqueClients: z.number().int().openapi({ example: 5 }),
+      noErrorCount: z.number().int().openapi({ example: 228 }),
+      successRate: z.number().openapi({ example: 95 }),
+      averageResponseMs: z.number().nullable().openapi({ example: 9 }),
+      topQtypes: z.array(
+        z.object({
+          qtype: z.string().openapi({ example: 'A' }),
+          count: z.number().int().openapi({ example: 180 }),
+        })
+      ),
+      topRcodes: z.array(
+        z.object({
+          rcode: z.string().openapi({ example: 'NoError' }),
+          count: z.number().int().openapi({ example: 228 }),
+        })
+      ),
+    }),
+    traffic: z.object({
+      bucketMinutes: z.number().int().openapi({ example: 30 }),
+      points: z.array(DomainInsightBucketSchema),
+    }),
+    recentEntries: z.array(LogEntrySchema),
+  })
+  .openapi('DomainInsightsResponse');
+
 export const CertDomainIdParamSchema = z
   .object({
     domainId: z.string().openapi({ param: { name: 'domainId', in: 'path' }, example: '1' }),
@@ -92,23 +166,55 @@ export const DNSReloadResponseSchema = z
   })
   .openapi('DNSReloadResponse');
 
-export const LogEntrySchema = z
-  .object({
-    id: z.number().int().openapi({ example: 25 }),
-    domain_queried: z.string().openapi({ example: 'admin.localhost' }),
-    resolved_to: z.string().nullable().openapi({ example: '127.0.0.1' }),
-    source: z.enum(['local', 'upstream']).openapi({ example: 'local' }),
-    response_ms: z.number().int().nullable().openapi({ example: 3 }),
-    matched_rule_id: z.number().int().nullable().openapi({ example: 1 }),
-    queried_at: z.string().openapi({ example: '2026-05-07 10:33:10' }),
-  })
-  .openapi('LogEntry');
-
 export const LogListQuerySchema = z
   .object({
     limit: z.string().optional().openapi({
       param: { name: 'limit', in: 'query' },
       example: '200',
+    }),
+    pageNumber: z.string().optional().openapi({
+      param: { name: 'pageNumber', in: 'query' },
+      example: '1',
+    }),
+    descendingOrder: z.string().optional().openapi({
+      param: { name: 'descendingOrder', in: 'query' },
+      example: 'true',
+    }),
+    start: z.string().optional().openapi({
+      param: { name: 'start', in: 'query' },
+      example: '2026-05-12T00:00:00Z',
+    }),
+    end: z.string().optional().openapi({
+      param: { name: 'end', in: 'query' },
+      example: '2026-05-12T23:59:59Z',
+    }),
+    clientIpAddress: z.string().optional().openapi({
+      param: { name: 'clientIpAddress', in: 'query' },
+      example: '127.0.0.1',
+    }),
+    protocol: z.string().optional().openapi({
+      param: { name: 'protocol', in: 'query' },
+      example: 'Udp',
+    }),
+    responseType: z.string().optional().openapi({
+      param: { name: 'responseType', in: 'query' },
+      example: 'Recursive',
+    }),
+    rcode: z.string().optional().openapi({
+      param: { name: 'rcode', in: 'query' },
+      example: 'NoError',
+    }),
+    qname: z.string().optional().openapi({
+      param: { name: 'qname', in: 'query' },
+      example: 'example.com',
+    }),
+    qtype: z.string().optional().openapi({
+      param: { name: 'qtype', in: 'query' },
+      example: 'A',
+    }),
+    qclass: z.string().optional().openapi({
+      param: { name: 'qclass', in: 'query' },
+      example: 'IN',
     }),
   })
   .openapi('LogListQuery');
@@ -116,6 +222,9 @@ export const LogListQuerySchema = z
 export const LogListResponseSchema = z
   .object({
     entries: z.array(LogEntrySchema),
+    pageNumber: z.number().int().openapi({ example: 1 }),
+    totalPages: z.number().int().openapi({ example: 4 }),
+    totalEntries: z.number().int().openapi({ example: 120 }),
     total: z.number().int().openapi({ example: 120 }),
   })
   .openapi('LogListResponse');
