@@ -1,371 +1,218 @@
-# Ratter
+# LocalDNS Server
 
-> Build locally with production-level simplicity.
+![Ratter dashboard](landing/dashboard/assets/ratter.png)
 
-Ratter is a local development infrastructure tool that automates HTTPS, DNS resolution, and reverse proxy management for developers. It allows you to run multiple local applications using clean custom domains like:
+LocalDNS Server is the coordination layer for the Ratter stack. It exposes an HTTP API, a dashboard, and the orchestration logic needed to keep local DNS records, certificates, and reverse-proxy routes in sync for development environments.
 
-```txt
-app.local
-api.local
-dashboard.test
-admin.dev
-```
+It is designed to run alongside two heavy external services:
 
-without manually configuring certificates, editing hosts files repeatedly, or managing complicated proxy setups.
+- Caddy, which handles reverse proxying and HTTPS automation through the Caddy Admin API.
+- Technitium DNS Server, which provides the DNS resolution layer for local domains.
 
-Ratter combines the power of Caddy and Technitium DNS Server into a simplified developer experience.
+The server also uses `mkcert` for generating local certificates and stores its own state in SQLite(depreciated).
 
----
+## What It Does
 
-# Features
+LocalDNS Server provides a single process that can:
 
-- Automatic HTTPS for local domains
-- Local DNS resolution
-- Dynamic reverse proxy routing
-- Automatic certificate generation
-- Local trusted certificate authority support
-- Multi-service support
-- Fast startup workflow
-- Simple configuration
-- Local production-like environments
-- Programmatic domain management
+- create, update, enable, disable, and delete local domains
+- push DNS records into Technitium
+- create and maintain Caddy reverse-proxy routes
+- generate and delete local TLS certificates with `mkcert`(depreciated)
+- expose an OpenAPI document and Swagger UI for the API
+- surface Technitium query logs and server logs through the API
+- serve the landing page and dashboard UI from the same runtime
 
----
+## Architecture
 
-# Why Ratter?
+The server runs as a small Hono application on port `4321` and coordinates the rest of the stack through admin APIs.
 
-Traditional local development usually involves:
-
-- Using `localhost:3000`, `localhost:5173`, etc.
-- Port conflicts
-- Editing the hosts file manually
-- Browser HTTPS warnings
-- Managing self-signed certificates manually
-- Complex reverse proxy configuration
-
-Ratter solves these problems by creating a local networking layer that behaves similarly to real production infrastructure.
-
----
-
-# How Ratter Works
-
-Ratter works by combining several components together:
-
-```txt
+```text
 Browser
-   ↓
-Local DNS Resolution (Technitium)
-   ↓
-Custom Domain → Local IP
-   ↓
-Caddy Reverse Proxy
-   ↓
-Local Application
+  -> LocalDNS Server (:4321)
+  -> Technitium DNS Server (:5380)
+  -> Caddy Admin API (:2019)
+  -> Local apps on the chosen upstream ports
 ```
 
-Example:
+Startup flow:
 
-```txt
-https://api.local
-        ↓
-Resolved by Technitium DNS
-        ↓
-127.0.0.1
-        ↓
-Caddy receives request
-        ↓
-Caddy forwards to localhost:3000
+1. load environment variables from `.env`
+2. initialize the SQLite database in `~/.localdns/localdns.db`
+3. bootstrap Technitium DNS records and Caddy routes from the stored domain list
+4. start polling Technitium logs
+5. serve the API, landing page, dashboard, and docs
+
+## Repository Layout
+
+```text
+localdns-server/
+├── src/
+│   ├── routes/          # API routes for domains, dns, certs, logs, and settings
+│   ├── services/        # Technitium, Caddy, cert, and log orchestration
+│   ├── startup/         # Dependency checks and bootstrap logic
+│   ├── db/              # SQLite client and schema
+│   └── openapi/         # OpenAPI schemas
+├── landing/             # Public landing page and dashboard assets
+├── scripts/             # Helper scripts for setup and cleanup
+├── caddy.json           # Caddy configuration used by the server
+├── Caddyfile            # Local Caddy entry configuration
+└── openAPI.json         # Generated API contract
 ```
-
----
-
-# Core Dependencies
-
-## 1. Caddy
-
-Ratter uses Caddy as its reverse proxy and HTTPS engine.
-
-Caddy handles:
-
-- HTTPS certificate generation
-- TLS management
-- Reverse proxying
-- HTTP → HTTPS redirects
-- Automatic certificate serving
-
-Website:
-https://caddyserver.com
-
----
-
-## 2. Technitium DNS Server
-
-Technitium provides local DNS resolution.
-
-It allows custom local domains like:
-
-```txt
-app.local
-api.local
-test.dev
-```
-
-to resolve to your local machine automatically.
-
-Website:
-https://technitium.com/dns/
-
----
-
-## 3. mkcert (Optional)
-
-Used for generating locally trusted development certificates.
-
-Website:
-https://github.com/FiloSottile/mkcert
-
----
-
-# Installation
 
 ## Requirements
 
-- Windows / Linux / macOS
-- Node.js 18+
-- Administrator privileges
-- Caddy installed
-- Technitium DNS Server installed
+- Node.js 22 or newer
+- npm
+- Caddy
+- Technitium DNS Server
+- `mkcert`
+- Access to the Technitium and Caddy admin endpoints
 
----
+## Installation
 
-# Quick Start
-
-## 1. Clone the repository
-
-```bash
-git clone https://github.com/yourusername/ratter.git
-cd ratter
-```
-
----
-
-## 2. Install dependencies
+Install dependencies from the `localdns-server` folder:
 
 ```bash
 npm install
 ```
 
----
+If you use a fresh machine, make sure `mkcert`, Caddy, and Technitium are installed and available before starting the server.
 
-## 3. Start Technitium DNS
+## Development
 
-Ensure Technitium DNS Server is running.
-
-Set your system DNS to:
-
-```txt
-127.0.0.1
-```
-
----
-
-## 4. Trust Caddy certificates
-
-Run:
-
-```bash
-caddy trust
-```
-
-This installs Caddy’s local Certificate Authority into your system trust store.
-
----
-
-## 5. Start Ratter
+Start the server in watch mode:
 
 ```bash
 npm run dev
 ```
 
-or
+Run the production-style entrypoint:
 
 ```bash
-node server.js
+npm start
 ```
 
----
+Run the test suite:
 
-# Example Configuration
-
-Example routing setup:
-
-```json
-{
-  "domains": [
-    {
-      "domain": "api.local",
-      "target": "localhost:3000"
-    },
-    {
-      "domain": "dashboard.local",
-      "target": "localhost:5173"
-    }
-  ]
-}
+```bash
+npm test
 ```
 
----
+The server listens on `http://localhost:4321` by default.
 
-# Example Caddyfile
+## Main Endpoints
 
-```caddy
-api.local {
-    reverse_proxy localhost:3000
-}
+### UI
 
-dashboard.local {
-    reverse_proxy localhost:5173
-}
+- `/` - landing page
+- `/dashboard` - dashboard SPA
+- `/docs` - Swagger UI
+- `/openapi.json` - OpenAPI document
+
+### API
+
+- `/api/domains` - domain management
+- `/api/dns` - DNS helpers and zone operations
+- `/api/certs` - certificate management
+- `/api/log` - log inspection and Technitium log access
+- `/api/settings` - persistent application settings
+
+## Configuration
+
+Most runtime configuration is controlled through environment variables and the stored settings table.
+
+### Environment Variables
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `TECHNITIUM_URL` | `http://localhost:5380` | Base URL for the Technitium API |
+| `TECHNITIUM_API_KEY` | unset | Bearer token used for Technitium API authentication |
+| `TECHNITIUM_NODE` | unset | Optional Technitium cluster node identifier |
+| `TECHNITIUM_LOGS_APP_NAME` | unset | Required for query-log access |
+| `TECHNITIUM_LOGS_CLASS_PATH` | unset | Required for query-log access |
+| `CADDY_ADMIN_URL` | `http://localhost:2019` | Base URL for the Caddy Admin API |
+| `CADDY_UPSTREAM_HOST` | `localhost` | Hostname used when building upstream targets |
+
+### Stored Settings
+
+Settings are stored in SQLite at `~/.localdns/localdns.db`. Important keys include:
+
+- `dns_port`
+- `upstream_dns`
+- `cert_dir`
+- `technitium_url`
+- `caddy_admin_url`
+- `app_domain`
+- `app_port`
+
+The default certificate directory is `~/.localdns/certs` unless overridden.
+
+## How It Works
+
+When a domain is created or updated, LocalDNS Server keeps all of the related infrastructure in sync:
+
+1. a DNS record is created or updated in Technitium
+2. a route is created or updated in Caddy
+3. a certificate can be generated for the domain if needed
+4. the UI and API expose the current state for inspection
+
+This lets you work with names like `api.local`, `dashboard.local`, or `app.test` instead of juggling ports and hosts-file edits.
+
+## Technitium Integration
+
+Technitium is responsible for the DNS layer. LocalDNS Server uses it to:
+
+- create DNS zones and records
+- enable or disable records
+- remove records when a domain is deleted
+- query logs for traffic and diagnostics
+- list and download Technitium log files
+
+If Technitium is unavailable, domain bootstrap and log access will fail until it is reachable again.
+
+## Caddy Integration
+
+Caddy is responsible for the reverse proxy and HTTPS layer. LocalDNS Server uses the Caddy Admin API to:
+
+- create the localdns server block
+- add and remove routes incrementally
+- preserve existing TLS and admin configuration
+- route host-based traffic to local upstream ports
+
+This is intentionally not done through a full config reload, because preserving Caddy state is important for stable local development.
+
+## Certificates(depreciated, Caddy handles it!)
+
+Certificate generation is handled with `mkcert` and stored in the configured certificate directory.
+
+Common operations:
+
+- generate a certificate for a domain
+- delete certificate files when a domain is removed
+- keep local development traffic on HTTPS with trusted certificates
+
+## Troubleshooting
+
+If startup fails, check the following first:
+
+- Caddy is running and its admin endpoint is reachable
+- Technitium is running and its API endpoint is reachable
+- your `.env` values match the local services you actually run
+- the required Technitium log settings are set if you expect log access
+
+If domains are not resolving, confirm that Technitium is serving the zone and that your system DNS points at the local resolver you configured.
+
+If routes are missing, inspect the Caddy Admin API and make sure the `CADDY_ADMIN_URL` and `CADDY_UPSTREAM_HOST` values are correct.
+
+## Tests
+
+The repository uses Vitest. The existing test suite covers the log poller and the Technitium integration pieces.
+
+```bash
+npm test
 ```
 
----
+## Notes for Future Packaging
 
-# HTTPS Workflow
-
-When a domain is added:
-
-1. Ratter updates DNS records
-2. Technitium resolves the domain locally
-3. Caddy generates a local certificate
-4. Browser trusts the certificate
-5. HTTPS works automatically
-
-Result:
-
-```txt
-https://api.local
-```
-
-with a valid secure lock icon.
-
----
-
-# DNS Resolution Flow
-
-```txt
-api.local
-    ↓
-Technitium DNS
-    ↓
-127.0.0.1
-    ↓
-Caddy
-    ↓
-localhost:3000
-```
-
----
-
-# Project Structure
-
-```txt
-ratter/
-│
-├── server/
-├── dns/
-├── proxy/
-├── configs/
-├── scripts/
-├── public/
-├── package.json
-└── README.md
-```
-
----
-
-# Planned Features
-
-- GUI dashboard
-- One-click setup installer
-- Automatic service discovery
-- Docker integration
-- Network isolation environments
-- Team configuration sharing
-- Dynamic route management API
-- Cross-device local networking
-- CLI tools
-- Auto-start background services
-
----
-
-# Use Cases
-
-## Full Stack Development
-
-```txt
-frontend.local
-api.local
-auth.local
-```
-
----
-
-## Microservices
-
-Route multiple services through clean domains.
-
----
-
-## HTTPS API Testing
-
-Test cookies, OAuth, and secure APIs locally.
-
----
-
-## Team Environments
-
-Share standardized local setups.
-
----
-
-# Goals
-
-Ratter aims to:
-
-- Remove local networking complexity
-- Make HTTPS effortless
-- Create production-like local environments
-- Improve developer onboarding
-- Reduce local setup time
-
----
-
-# Security Notes
-
-Ratter is intended for local development environments only.
-
-Do NOT expose local certificates or DNS configurations publicly.
-
----
-
-# Contributing
-
-Pull requests, issues, and ideas are welcome.
-
----
-
-# License
-
-MIT License
-
----
-
-# Inspiration
-
-Ratter is inspired by modern developer tooling that prioritizes simplicity, automation, and production-like local workflows.
-
----
-
-# Author
-
-Built for developers who want local infrastructure without the headache.
+This project is primarily a local engine, not a published npm library. If you want to distribute it through npm, you should first decide whether it is meant to be installed as an executable app, a private internal package, or split into reusable packages.
